@@ -3,6 +3,7 @@ import shutil
 import threading
 import time
 import zipfile
+import rarfile
 import uuid
 from flask import Flask, redirect, render_template, request
 from PIL import Image
@@ -22,17 +23,29 @@ def delete_files_after_delay(directory, delay):
     os.rmdir(directory)
 
 def unpack_cbz(content, session_id):
-	temp_dir = 'temp/' + session_id
-	os.makedirs(temp_dir, exist_ok=True)
-	temp_file = os.path.join(temp_dir, f'{uuid.uuid4()}.cbz')
+    temp_dir = 'temp/' + session_id
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_file = os.path.join(temp_dir, f'{uuid.uuid4()}')
 
-	with open(temp_file, 'wb') as file:
-		file.write(content)
+    with open(temp_file, 'wb') as file:
+        file.write(content)
 
-	with zipfile.ZipFile(temp_file, 'r') as zip_ref:
-		zip_ref.extractall(temp_dir)
+    if content.startswith(b'PK'):
+        temp_file += '.cbz'
+        os.rename(temp_file, temp_file)  # Dateiendung hinzufügen
+        with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+    elif content.startswith(b'Rar!\x1A\x07\x00'):
+        temp_file += '.cbr'
+        os.rename(temp_file, temp_file)  # Dateiendung hinzufügen
+        with rarfile.RarFile(temp_file, 'r') as rar_ref:
+            rar_ref.extractall(temp_dir)
+    else:
+        os.remove(temp_file)
+        raise ValueError("Unsupported file format!")
 
-	os.remove(temp_file)
+    os.remove(temp_file)
+
 def convert_images(directory, session_id):
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
