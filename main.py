@@ -62,8 +62,8 @@ def generate_series(series_id):
     # Download the file
     content = komga.get_file(series_id)
     
-	# Check if the file is a zip file
-    if not content.startswith(b'PK'):
+    # Check if the file is a zip file or a cbr (RAR archive) file
+    if not (content.startswith(b'PK') or content.startswith(b'Rar!\x1A\x07\x00')):
         return render_template('error.html', message='Invalid file format!')
 
     # Unpack and convert the images
