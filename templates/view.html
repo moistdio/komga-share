@@ -29,25 +29,6 @@
             box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
         }
 
-		button {
-			background-color: #4CAF50; /* Green background */
-			border: none; /* Remove border */
-			color: white; /* White text */
-			padding: 15px 32px; /* Some padding */
-			text-align: center; /* Centered text */
-			text-decoration: none; /* Remove underline */
-			display: inline-block;
-			font-size: 16px;
-			margin: 4px 2px;
-			cursor: pointer; /* Mouse pointer on hover */
-			transition-duration: 0.4s; /* Transition effects */
-			border-radius: 12px; /* Rounded corners */
-		}
-
-		button:hover {
-			background-color: #45a049; /* Darker green background on hover */
-		}
-
 		#imageContainer {
 			display: flex;
 			justify-content: center;
@@ -61,8 +42,6 @@
 <div id="imageContainer"></div>
 
 <footer id="footer">
-    <button onclick="previousPage()">Vorherige</button>
-
 	<select id="fitSelect" onchange="changeFitMode(this.value)">
 		<option value="fit-screen">Fit Screen</option>
 		<option value="fit-width">Fit Width</option>
@@ -70,8 +49,6 @@
 		<option value="fit-height">Fit Height</option>
 		<option value="original">Original</option>
 	</select>
-
-	<button onclick="nextPage()">Nächste</button>
 </footer>
 
 <script>

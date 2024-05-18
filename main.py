@@ -4,7 +4,7 @@ import threading
 import time
 import zipfile
 import uuid
-from flask import Flask, redirect, render_template
+from flask import Flask, redirect, render_template, request
 from PIL import Image
 from komgaAPI import KomgaApi
 
@@ -44,6 +44,13 @@ def convert_images(directory, session_id):
                 img.save(f'static/{session_id}/{filename}', 'JPEG')
         elif os.path.isdir(file_path):
             convert_images(file_path, session_id)
+            
+@app.route('/', methods=['GET', 'POST'])
+def main_page():
+    if request.method == 'POST':
+        series_id = request.form.get('series_id')
+        return redirect(f'/generate/{series_id}')
+    return render_template('main.html')
 
 @app.route('/generate/<series_id>')
 def generate_series(series_id):
@@ -54,6 +61,10 @@ def generate_series(series_id):
 
     # Download the file
     content = komga.get_file(series_id)
+    
+	# Check if the file is a zip file
+    if not content.startswith(b'PK'):
+        return render_template('error.html', message='Invalid file format!')
 
     # Unpack and convert the images
     unpack_cbz(content, session_id)
