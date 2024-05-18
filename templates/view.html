@@ -5,33 +5,74 @@
         body {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            justify-content: space-between;
             padding: 20px;
             background-color: #f0f0f0;
+            min-height: 100vh;
         }
-		img {
-			height: 100vw;
-			width: 100vw;
-			object-fit: cover;
-			margin-bottom: 20px;
-			box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        img {
+            height: 100vw;
+            width: 100%;
+            object-fit: cover;
+            margin-bottom: 20px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+        footer {
+            position: fixed;
+            bottom: 0;
+            width: calc(100% - 95px);;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: #ddd;
+            box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
+        }
+
+		button {
+			background-color: #4CAF50; /* Green background */
+			border: none; /* Remove border */
+			color: white; /* White text */
+			padding: 15px 32px; /* Some padding */
+			text-align: center; /* Centered text */
+			text-decoration: none; /* Remove underline */
+			display: inline-block;
+			font-size: 16px;
+			margin: 4px 2px;
+			cursor: pointer; /* Mouse pointer on hover */
+			transition-duration: 0.4s; /* Transition effects */
+			border-radius: 12px; /* Rounded corners */
+		}
+
+		button:hover {
+			background-color: #45a049; /* Darker green background on hover */
+		}
+
+		#imageContainer {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: calc(100vh - 60px); /* Adjust this value as needed */
+			flex-wrap: wrap;
 		}
     </style>
 </head>
 <body>
 <div id="imageContainer"></div>
 
-<button onclick="previousPage()">Vorherige</button>
-<button onclick="nextPage()">Nächste</button>
+<footer id="footer">
+    <button onclick="previousPage()">Vorherige</button>
 
-<select id="fitSelect" onchange="changeFitMode(this.value)">
-    <option value="cover">Cover</option>
-    <option value="contain">Contain</option>
-    <option value="fill">Fill</option>
-    <option value="none">None</option>
-    <option value="scale-down">Scale-down</option>
-</select>
+	<select id="fitSelect" onchange="changeFitMode(this.value)">
+		<option value="fit-screen">Fit Screen</option>
+		<option value="fit-width">Fit Width</option>
+		<option value="fit-width-shrink">Fit Width (Shrink Only)</option>
+		<option value="fit-height">Fit Height</option>
+		<option value="original">Original</option>
+	</select>
+
+	<button onclick="nextPage()">Nächste</button>
+</footer>
 
 <script>
     var images = {{ images|tojson|safe }};
@@ -57,10 +98,6 @@
 		for (var i = 0; i < pageImages.length; i++) {
 			var img = document.createElement('img');
 			img.src = "{{ url_for('static', filename=user_dir) }}/" + pageImages[i];
-			// Set the object-fit property to the saved mode
-			if (savedMode) {
-				img.style.objectFit = savedMode;
-			}
 
 			// Add an error event listener to the image
 			img.onerror = function() {
@@ -69,13 +106,19 @@
 			};
 
 			container.appendChild(img);
+
+				// Set the object-fit property to the saved mode
+			if (savedMode) {
+				console.log(savedMode)
+				changeFitMode(savedMode);
+			}
 		}
 
 		// Update the current page
 		currentPage = page;
 
-		// Scroll to the top of the page
-		window.scrollTo(0, 0);
+		// Scroll to the top of the image container
+		document.getElementById('imageContainer').scrollIntoView();
 	}
 
     function previousPage() {
@@ -92,8 +135,51 @@
 
 	function changeFitMode(mode) {
 		var imgs = document.getElementsByTagName('img');
+		var container = document.getElementById('imageContainer');
 		for (var i = 0; i < imgs.length; i++) {
-			imgs[i].style.objectFit = mode;
+			switch(mode) {
+				case 'fit-screen':
+					imgs[i].style.objectFit = 'contain';
+					imgs[i].style.height = '100vh';
+					imgs[i].style.width = '100%';
+					container.style.height = '100vh';
+					container.style.width = '100%';
+					break;
+				case 'fit-width':
+					imgs[i].style.objectFit = 'cover';
+					imgs[i].style.height = 'auto';
+					imgs[i].style.width = '100%';
+					container.style.height = 'auto';
+					container.style.width = '100%';
+					break;
+				case 'fit-width-shrink':
+					imgs[i].onload = function() {
+						if (mode === 'fit-width-shrink' && this.naturalHeight < window.innerHeight) {
+							container.style.height = this.naturalHeight + 'px';
+						}
+					};
+					imgs[i].style.objectFit = 'scale-down';
+					imgs[i].style.height = 'auto';
+					imgs[i].style.width = '100%';
+					container.style.width = 'auto';
+					container.style.maxHeight = '100%';
+					container.style.maxWidth = '100%';
+					break;
+				case 'fit-height':
+					imgs[i].style.objectFit = 'cover';
+					imgs[i].style.height = '100vh';
+					imgs[i].style.width = 'auto';
+					container.style.height = '100vh';
+					container.style.width = 'auto';
+					break;
+				case 'original':
+					imgs[i].style.objectFit = 'none';
+					imgs[i].style.height = 'auto';
+					imgs[i].style.width = 'auto';
+					container.style.height = 'auto';
+					container.style.width = 'auto';
+					break;
+			}
 		}
 		// Save the selected mode to localStorage
 		localStorage.setItem('fitMode', mode);
@@ -151,6 +237,17 @@
 	window.addEventListener('touchend', function(event) {
 		touchStartX = null;
 	});
+
+	// Toggle the footer visibility when the image is clicked
+    document.getElementById('imageContainer').addEventListener('click', function() {
+        // Toggle the visibility of the footer
+        var footer = document.getElementById('footer');
+        if (footer.style.display === 'none') {
+            footer.style.display = 'flex';
+        } else {
+            footer.style.display = 'none';
+        }
+    });
 </script>
 </body>
 </html>
