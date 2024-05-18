@@ -31,13 +31,9 @@ def unpack_cbz(content, session_id):
         file.write(content)
 
     if content.startswith(b'PK'):
-        temp_file += '.cbz'
-        os.rename(temp_file, temp_file)  # Dateiendung hinzufügen
         with zipfile.ZipFile(temp_file, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
     elif content.startswith(b'Rar!\x1A\x07\x00'):
-        temp_file += '.cbr'
-        os.rename(temp_file, temp_file)  # Dateiendung hinzufügen
         with rarfile.RarFile(temp_file, 'r') as rar_ref:
             rar_ref.extractall(temp_dir)
     else:
@@ -103,4 +99,4 @@ def view_series(session_id):
     return render_template('view.html', images=images, user_dir=session_id)
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(host="0.0.0.0", port=5000)
