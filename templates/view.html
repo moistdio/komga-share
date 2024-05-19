@@ -42,13 +42,17 @@
 <div id="imageContainer"></div>
 
 <footer id="footer">
-	<select id="fitSelect" onchange="changeFitMode(this.value)">
-		<option value="fit-screen">Fit Screen</option>
-		<option value="fit-width">Fit Width</option>
-		<option value="fit-width-shrink">Fit Width (Shrink Only)</option>
-		<option value="fit-height">Fit Height</option>
-		<option value="original">Original</option>
-	</select>
+    <div>Seite: <span id="currentPageDisplay">1</span> von <span id="totalPages"></span></div>
+    <select id="pageSelect" onchange="jumpToPage(this.value)">
+        <!-- Optionen werden dynamisch hinzugefügt -->
+    </select>
+    <select id="fitSelect" onchange="changeFitMode(this.value)">
+        <option value="fit-screen">Fit Screen</option>
+        <option value="fit-width">Fit Width</option>
+        <option value="fit-width-shrink">Fit Width (Shrink Only)</option>
+        <option value="fit-height">Fit Height</option>
+        <option value="original">Original</option>
+    </select>
 </footer>
 
 <script>
@@ -57,45 +61,48 @@
     var currentPage = 1;
 
 	function showPage(page) {
-		// Calculate the start and end indices for this page
 		var start = (page - 1) * perPage;
 		var end = start + perPage;
-
-		// Get the images for this page
 		var pageImages = images.slice(start, end);
-
-		// Clear the current images
 		var container = document.getElementById('imageContainer');
 		container.innerHTML = '';
-
-		// Get the saved mode
 		var savedMode = localStorage.getItem('fitMode');
 
-		// Add the images for this page
 		for (var i = 0; i < pageImages.length; i++) {
 			var img = document.createElement('img');
 			img.src = "{{ url_for('static', filename=user_dir) }}/" + pageImages[i];
-
-			// Add an error event listener to the image
 			img.onerror = function() {
-				// Replace the page content with an error message
 				document.body.innerHTML = 'Content got removed';
 			};
-
 			container.appendChild(img);
-
-				// Set the object-fit property to the saved mode
 			if (savedMode) {
 				console.log(savedMode)
 				changeFitMode(savedMode);
 			}
 		}
 
-		// Update the current page
 		currentPage = page;
-
-		// Scroll to the top of the image container
+		document.getElementById('currentPageDisplay').innerText = currentPage;
+		document.getElementById('totalPages').innerText = Math.ceil(images.length / perPage);
 		document.getElementById('imageContainer').scrollIntoView();
+		updatePageSelect(); // Aktualisiert die Seitenauswahl
+	}
+
+	function jumpToPage(pageNumber) {
+		showPage(parseInt(pageNumber, 10));
+	}
+
+	function updatePageSelect() {
+		var pageSelect = document.getElementById('pageSelect');
+		pageSelect.innerHTML = ''; // Löscht vorhandene Optionen
+		var totalPages = Math.ceil(images.length / perPage);
+		for (var i = 1; i <= totalPages; i++) {
+			var option = document.createElement('option');
+			option.value = i;
+			option.text = 'Seite ' + i;
+			pageSelect.appendChild(option);
+		}
+		pageSelect.value = currentPage;
 	}
 
     function previousPage() {
@@ -177,13 +184,26 @@
         }
     });
 
-	// Restore the selected mode when the page loads
+	function zoomImage(scale) {
+		var imgs = document.getElementsByTagName('img');
+		for (var i = 0; i < imgs.length; i++) {
+			imgs[i].style.transform = 'scale(' + scale + ')';
+		}
+		// Save the current scale to localStorage
+		localStorage.setItem('zoomScale', scale);
+	}
+
+	// Restore the selected mode and zoom level when the page loads
 	window.onload = function() {
 		showPage(1);
 		var savedMode = localStorage.getItem('fitMode');
+		var savedScale = localStorage.getItem('zoomScale');
 		if (savedMode) {
 			document.getElementById('fitSelect').value = savedMode;
 			changeFitMode(savedMode);
+		}
+		if (savedScale) {
+			zoomImage(savedScale);
 		}
 	};
 
@@ -192,26 +212,38 @@
 
 	// Add touch event listeners to the window
 	window.addEventListener('touchstart', function(event) {
-		touchStartX = event.touches[0].clientX;
+		if (event.touches.length > 1) {
+			initialTouches = event.touches;
+		} else {
+			touchStartX = event.touches[0].clientX;
+		}
 	});
 
 	window.addEventListener('touchmove', function(event) {
-		if (touchStartX === null) {
-			return;
-		}
-		var touchEndX = event.touches[0].clientX;
-		var touchDiff = touchStartX - touchEndX;
+		if (event.touches.length > 1 && initialTouches.length > 1) {
+			// Calculate the distance between the two initial touches
+			var initialDistance = Math.sqrt(Math.pow(initialTouches[0].clientX - initialTouches[1].clientX, 2) + Math.pow(initialTouches[0].clientY - initialTouches[1].clientY, 2));
+			// Calculate the distance between the two current touches
+			var currentDistance = Math.sqrt(Math.pow(event.touches[0].clientX - event.touches[1].clientX, 2) + Math.pow(event.touches[0].clientY - event.touches[1].clientY, 2));
+			// Calculate the scale based on the change in distance
+			var scale = currentDistance / initialDistance;
+			zoomImage(scale);
+		} else if (touchStartX !== null) {
+			var touchEndX = event.touches[0].clientX;
+			var touchDiff = touchStartX - touchEndX;
 
-		if (touchDiff > 100) { // a left swipe
-			nextPage();
-			touchStartX = null;
-		} else if (touchDiff < -100) { // a right swipe
-			previousPage();
-			touchStartX = null;
+			if (touchDiff > 100) { // a left swipe
+				nextPage();
+				touchStartX = null;
+			} else if (touchDiff < -100) { // a right swipe
+				previousPage();
+				touchStartX = null;
+			}
 		}
 	});
 
 	window.addEventListener('touchend', function(event) {
+		initialTouches = [];
 		touchStartX = null;
 	});
 

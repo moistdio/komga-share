@@ -45,12 +45,17 @@ def unpack_cbz(content, session_id):
 def convert_images(directory, session_id):
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
-        if os.path.isfile(file_path):
-            if filename.endswith('.jpg') or filename.endswith('.png'):
-                img = Image.open(file_path)
-                # create in static folder with session_id as subfolder
-                os.makedirs(f'static/{session_id}', exist_ok=True)
-                img.save(f'static/{session_id}/{filename}', 'JPEG')
+        if os.path.isfile(file_path) and (filename.endswith('.jpg') or filename.endswith('.png')):
+            img = Image.open(file_path)
+            # Konvertieren in RGB, falls das Bild im Modus 'P' oder 'RGBA' ist
+            if img.mode == 'P' or img.mode == 'RGBA':
+                img = img.convert('RGB')
+            # Erstellen des Zielverzeichnisses, falls es nicht existiert
+            target_directory = f'static/{session_id}'
+            os.makedirs(target_directory, exist_ok=True)
+            # Speichern des Bildes mit geänderter Dateiendung
+            target_file_path = os.path.join(target_directory, os.path.splitext(filename)[0] + '.jpg')
+            img.save(target_file_path, 'JPEG')
         elif os.path.isdir(file_path):
             convert_images(file_path, session_id)
             
