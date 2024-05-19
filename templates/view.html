@@ -1,262 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
+    <meta charset="UTF-8">
+    <title>Bildergalerie</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/photoswipe/4.1.3/photoswipe.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/photoswipe/4.1.3/default-skin/default-skin.min.css">
     <style>
-        body {
+        .my-gallery {
             display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 20px;
-            background-color: #f0f0f0;
-            min-height: 100vh;
+            flex-wrap: wrap;
+            margin: -5px;
         }
-        img {
-            height: 100vw;
+        .my-gallery figure {
+            margin: 5px;
+            width: calc(100% / 3 - 10px);
+            box-sizing: border-box;
+        }
+        .my-gallery img {
             width: 100%;
-            object-fit: cover;
-            margin-bottom: 20px;
-            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+            height: auto;
         }
-        footer {
-            position: fixed;
-            bottom: 0;
-            width: calc(100% - 95px);;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background-color: #ddd;
-            box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
-        }
-
-		#imageContainer {
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			height: calc(100vh - 60px); /* Adjust this value as needed */
-			flex-wrap: wrap;
-		}
     </style>
 </head>
 <body>
-<div id="imageContainer"></div>
 
-<footer id="footer">
-    <div>Seite: <span id="currentPageDisplay">1</span> von <span id="totalPages"></span></div>
-    <select id="pageSelect" onchange="jumpToPage(this.value)">
-        <!-- Optionen werden dynamisch hinzugefügt -->
-    </select>
-    <select id="fitSelect" onchange="changeFitMode(this.value)">
-        <option value="fit-screen">Fit Screen</option>
-        <option value="fit-width">Fit Width</option>
-        <option value="fit-width-shrink">Fit Width (Shrink Only)</option>
-        <option value="fit-height">Fit Height</option>
-        <option value="original">Original</option>
-    </select>
-</footer>
+<div class="my-gallery" itemscope itemtype="http://schema.org/ImageGallery">
+    {% for image in images %}
+    <figure itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+        <a href="{{ url_for('static', filename=user_dir + '/' + image) }}" itemprop="contentUrl" data-size="1024x768">
+            <img src="{{ url_for('static', filename=user_dir + '/' + image) }}" itemprop="thumbnail" alt="Bildbeschreibung" />
+        </a>
+    </figure>
+    {% endfor %}
+</div>
+
+<!-- Root element der Photoswipe. Muss am Ende des Body stehen. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="pswp__bg"></div>
+    <div class="pswp__scroll-wrap">
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Schließen (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Teilen"></button>
+                <button class="pswp__button pswp__button--fs" title="Vollbild"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom"></button>
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Vorheriges (Pfeil links)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Nächstes (Pfeil rechts)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-    var images = {{ images|tojson|safe }};
-    var perPage = 1;
-    var currentPage = 1;
+	document.addEventListener('DOMContentLoaded', function() {
+		var openPhotoSwipe = function(index) {
+			var pswpElement = document.querySelectorAll('.pswp')[0];
+			var items = [];
 
-	function showPage(page) {
-		var start = (page - 1) * perPage;
-		var end = start + perPage;
-		var pageImages = images.slice(start, end);
-		var container = document.getElementById('imageContainer');
-		container.innerHTML = '';
-		var savedMode = localStorage.getItem('fitMode');
+			document.querySelectorAll('.my-gallery a').forEach(function(item) {
+				var size = item.getAttribute('data-size').split('x');
+				items.push({
+					src: item.getAttribute('href'),
+					w: parseInt(size[0], 10),
+					h: parseInt(size[1], 10)
+				});
+			});
 
-		for (var i = 0; i < pageImages.length; i++) {
-			var img = document.createElement('img');
-			img.src = "{{ url_for('static', filename=user_dir) }}/" + pageImages[i];
-			img.onerror = function() {
-				document.body.innerHTML = 'Content got removed';
+			var options = {
+				index: index
 			};
-			container.appendChild(img);
-			if (savedMode) {
-				console.log(savedMode)
-				changeFitMode(savedMode);
-			}
-		}
 
-		currentPage = page;
-		document.getElementById('currentPageDisplay').innerText = currentPage;
-		document.getElementById('totalPages').innerText = Math.ceil(images.length / perPage);
-		document.getElementById('imageContainer').scrollIntoView();
-		updatePageSelect(); // Aktualisiert die Seitenauswahl
-	}
+			var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
+			gallery.init();
+		};
 
-	function jumpToPage(pageNumber) {
-		showPage(parseInt(pageNumber, 10));
-	}
-
-	function updatePageSelect() {
-		var pageSelect = document.getElementById('pageSelect');
-		pageSelect.innerHTML = ''; // Löscht vorhandene Optionen
-		var totalPages = Math.ceil(images.length / perPage);
-		for (var i = 1; i <= totalPages; i++) {
-			var option = document.createElement('option');
-			option.value = i;
-			option.text = 'Seite ' + i;
-			pageSelect.appendChild(option);
-		}
-		pageSelect.value = currentPage;
-	}
-
-    function previousPage() {
-        if (currentPage > 1) {
-            showPage(currentPage - 1);
-        }
-    }
-
-    function nextPage() {
-        if (currentPage < images.length / perPage) {
-            showPage(currentPage + 1);
-        }
-    }
-
-	function changeFitMode(mode) {
-		var imgs = document.getElementsByTagName('img');
-		var container = document.getElementById('imageContainer');
-		for (var i = 0; i < imgs.length; i++) {
-			switch(mode) {
-				case 'fit-screen':
-					imgs[i].style.objectFit = 'contain';
-					imgs[i].style.height = '100vh';
-					imgs[i].style.width = '100%';
-					container.style.height = '100vh';
-					container.style.width = '100%';
-					break;
-				case 'fit-width':
-					imgs[i].style.objectFit = 'cover';
-					imgs[i].style.height = 'auto';
-					imgs[i].style.width = '100%';
-					container.style.height = 'auto';
-					container.style.width = '100%';
-					break;
-				case 'fit-width-shrink':
-					imgs[i].onload = function() {
-						if (mode === 'fit-width-shrink' && this.naturalHeight < window.innerHeight) {
-							container.style.height = this.naturalHeight + 'px';
-						}
-					};
-					imgs[i].style.objectFit = 'scale-down';
-					imgs[i].style.height = 'auto';
-					imgs[i].style.width = '100%';
-					container.style.width = 'auto';
-					container.style.maxHeight = '100%';
-					container.style.maxWidth = '100%';
-					break;
-				case 'fit-height':
-					imgs[i].style.objectFit = 'cover';
-					imgs[i].style.height = '100vh';
-					imgs[i].style.width = 'auto';
-					container.style.height = '100vh';
-					container.style.width = 'auto';
-					break;
-				case 'original':
-					imgs[i].style.objectFit = 'none';
-					imgs[i].style.height = 'auto';
-					imgs[i].style.width = 'auto';
-					container.style.height = 'auto';
-					container.style.width = 'auto';
-					break;
-			}
-		}
-		// Save the selected mode to localStorage
-		localStorage.setItem('fitMode', mode);
-	}
-
-	// Add a keydown event listener to the window
-	window.addEventListener('keydown', function(event) {
-        // Check which key was pressed
-        switch (event.key) {
-            case 'ArrowLeft':
-                // If the left arrow key was pressed, go to the previous page
-                previousPage();
-                break;
-            case 'ArrowRight':
-                // If the right arrow key was pressed, go to the next page
-                nextPage();
-                break;
-        }
-    });
-
-	function zoomImage(scale) {
-		var imgs = document.getElementsByTagName('img');
-		for (var i = 0; i < imgs.length; i++) {
-			imgs[i].style.transform = 'scale(' + scale + ')';
-		}
-		// Save the current scale to localStorage
-		localStorage.setItem('zoomScale', scale);
-	}
-
-	// Restore the selected mode and zoom level when the page loads
-	window.onload = function() {
-		showPage(1);
-		var savedMode = localStorage.getItem('fitMode');
-		var savedScale = localStorage.getItem('zoomScale');
-		if (savedMode) {
-			document.getElementById('fitSelect').value = savedMode;
-			changeFitMode(savedMode);
-		}
-		if (savedScale) {
-			zoomImage(savedScale);
-		}
-	};
-
-	// Gesture support
-	var touchStartX = null;
-
-	// Add touch event listeners to the window
-	window.addEventListener('touchstart', function(event) {
-		if (event.touches.length > 1) {
-			initialTouches = event.touches;
-		} else {
-			touchStartX = event.touches[0].clientX;
-		}
+		document.querySelectorAll('.my-gallery a').forEach(function(item, index) {
+			item.onclick = function(event) {
+				event.preventDefault();
+				openPhotoSwipe(index);
+			};
+		});
 	});
-
-	window.addEventListener('touchmove', function(event) {
-		if (event.touches.length > 1 && initialTouches.length > 1) {
-			// Calculate the distance between the two initial touches
-			var initialDistance = Math.sqrt(Math.pow(initialTouches[0].clientX - initialTouches[1].clientX, 2) + Math.pow(initialTouches[0].clientY - initialTouches[1].clientY, 2));
-			// Calculate the distance between the two current touches
-			var currentDistance = Math.sqrt(Math.pow(event.touches[0].clientX - event.touches[1].clientX, 2) + Math.pow(event.touches[0].clientY - event.touches[1].clientY, 2));
-			// Calculate the scale based on the change in distance
-			var scale = currentDistance / initialDistance;
-			zoomImage(scale);
-		} else if (touchStartX !== null) {
-			var touchEndX = event.touches[0].clientX;
-			var touchDiff = touchStartX - touchEndX;
-
-			if (touchDiff > 100) { // a left swipe
-				nextPage();
-				touchStartX = null;
-			} else if (touchDiff < -100) { // a right swipe
-				previousPage();
-				touchStartX = null;
-			}
-		}
-	});
-
-	window.addEventListener('touchend', function(event) {
-		initialTouches = [];
-		touchStartX = null;
-	});
-
-	// Toggle the footer visibility when the image is clicked
-    document.getElementById('imageContainer').addEventListener('click', function() {
-        // Toggle the visibility of the footer
-        var footer = document.getElementById('footer');
-        if (footer.style.display === 'none') {
-            footer.style.display = 'flex';
-        } else {
-            footer.style.display = 'none';
-        }
-    });
 </script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/photoswipe/4.1.3/photoswipe.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/photoswipe/4.1.3/photoswipe-ui-default.min.js"></script>
+<script>
+    var openPhotoSwipe = function() {
+        var pswpElement = document.querySelectorAll('.pswp')[0];
+        var items = [];
+
+        var images = document.querySelectorAll('.my-gallery img');
+        for(var i = 0; i < images.length; i++) {
+            var image = images[i];
+            var item = {
+                src: image.parentElement.getAttribute('href'),
+                w: parseInt(image.parentElement.getAttribute('data-size').split('x')[0]),
+                h: parseInt(image.parentElement.getAttribute('data-size').split('x')[1])
+            };
+            items.push(item);
+        }
+
+        var options = {
+            index: 0
+        };
+
+        var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
+        gallery.init();
+    };
+
+    document.querySelectorAll('.my-gallery a').forEach(function(item) {
+        item.onclick = function(event) {
+            event.preventDefault();
+            openPhotoSwipe();
+        };
+    });
+
+	window.addEventListener('load', function() {
+    var images = document.querySelectorAll('.my-gallery img');
+    images.forEach(function(img) {
+        var width = img.naturalWidth;
+        var height = img.naturalHeight;
+        img.parentElement.setAttribute('data-size', width + 'x' + height);
+    });
+});
+</script>
+
 </body>
 </html>
